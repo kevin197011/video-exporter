@@ -1,0 +1,33 @@
+# Video Exporter 配置文件示例
+
+exporter:
+  check_interval: 30    # 健康检查间隔（秒）
+  sample_duration: 10   # 流采样时长（秒），每次检查采样多少秒的数据
+  min_keyframes: 2      # 最小关键帧数，采样到这么多关键帧后可提前结束
+  max_concurrent: 1000  # 最大并发监控数
+  max_retries: 3        # 连接失败最大重试次数
+  listen_addr: "8080"   # Prometheus exporter 监听地址（端口或 :端口）
+
+# 监控的流列表（按项目分组）
+streams:
+  # 项目1
+  project1:
+    - url: https://example.com/live/stream1.flv
+      id: stream-01
+    - url: https://example.com/live/stream2.flv
+      id: stream-02
+
+  # 项目2
+  project2:
+    - url: rtmp://example.com/live/stream3
+      id: stream-03
+    - url: https://example.com/live/stream4.m3u8
+      id: stream-04
+
+# 配置说明：
+# 1. check_interval: 建议设置为 20-60 秒
+# 2. sample_duration: 每次检查采样的时长，建议 5-15 秒，时间越长指标越准确但检查越慢
+# 3. min_keyframes: 最小关键帧数，采样到足够关键帧后可提前结束，建议 2-5
+# 4. max_concurrent: 根据服务器性能设置，建议 100-1000
+# 5. max_retries: 连接失败重试次数，建议 3-5 次
+# 6. 支持的流格式: FLV, RTMP, HLS, RTSP, HTTP-FLV 等所有FFmpeg支持的格式
