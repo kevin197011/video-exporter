@@ -288,25 +288,16 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 	sc.gopSize = keyframeInterval
 	sc.response = responseTime // 更新响应时间
 
-	// 计算帧率和码率
-	// 注意：FLV 格式中，pkt.Time 的单位是毫秒（milliseconds），不是纳秒
+	// 计算帧率和码率（基于 DTS 时间，更准确）
 	if !firstPacketTime.IsZero() && lastDTS > firstDTS {
-		// FLV 时间戳是毫秒，转换为秒
-		dtsElapsed := float64(lastDTS-firstDTS) / 1000.0
+		dtsElapsed := float64(lastDTS-firstDTS) / 1e9 // 纳秒转秒
 		if dtsElapsed > 0 {
 			sc.framerate = float64(videoCount) / dtsElapsed
 			// 基于 DTS 时间计算码率更准确
 			sc.currentBitrate = (float64(totalBytes) * 8) / dtsElapsed // bps
-		} else {
-			// DTS 时间差为 0 或负数，使用实际耗时
-			if duration.Seconds() > 0 {
-				sc.framerate = float64(videoCount) / duration.Seconds()
-				sc.currentBitrate = (float64(totalBytes) * 8) / duration.Seconds() // bps
-			}
 		}
 	} else if duration.Seconds() > 0 {
 		// 如果没有 DTS，使用实际耗时
-		sc.framerate = float64(videoCount) / duration.Seconds()
 		sc.currentBitrate = (float64(totalBytes) * 8) / duration.Seconds() // bps
 	}
 
