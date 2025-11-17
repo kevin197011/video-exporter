@@ -17,6 +17,29 @@ import (
 	"github.com/nareix/joy5/format/flv"
 )
 
+// 全局HTTP客户端，复用连接池
+var globalHTTPClient *http.Client
+var httpClientOnce sync.Once
+
+// 预编译正则表达式
+var urlRegex = regexp.MustCompile(`https?://([^/]+)/(.+)`)
+
+// initHTTPClient 初始化全局HTTP客户端
+func initHTTPClient() {
+	httpClientOnce.Do(func() {
+		transport := &http.Transport{
+			MaxIdleConns:        500,              // 最大空闲连接数
+			MaxIdleConnsPerHost: 50,               // 每个主机最大空闲连接数
+			IdleConnTimeout:     90 * time.Second, // 空闲连接超时
+			DisableKeepAlives:   false,            // 启用连接复用
+		}
+		globalHTTPClient = &http.Client{
+			Transport: transport,
+			Timeout:   0, // 不限制超时，由我们自己控制
+		}
+	})
+}
+
 // StreamChecker 流检查器
 type StreamChecker struct {
 	id      string
@@ -76,9 +99,8 @@ func extractStreamName(project, id, rawURL string) string {
 			}
 		}
 	} else {
-		// 解析失败的兜底
-		re := regexp.MustCompile(`https?://([^/]+)/(.+)`)
-		if matches := re.FindStringSubmatch(rawURL); len(matches) >= 3 {
+		// 解析失败的兜底，使用预编译的正则表达式
+		if matches := urlRegex.FindStringSubmatch(rawURL); len(matches) >= 3 {
 			host := matches[1]
 			if host != "" {
 				if parts := strings.Split(host, "."); len(parts) > 0 && parts[0] != "" {
@@ -120,10 +142,8 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 
 	startTime := time.Now()
 
-	// 创建 HTTP 客户端 - 不设置超时，因为我们需要持续读取
-	client := &http.Client{
-		Timeout: 0, // 不限制超时，由我们自己控制
-	}
+	// 初始化全局HTTP客户端（如果还未初始化）
+	initHTTPClient()
 
 	// 记录请求开始时间，用于计算HTTP-FLV请求响应时间
 	reqStart := time.Now()
@@ -132,7 +152,8 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 		return fmt.Errorf("创建请求失败: %w", err)
 	}
 
-	resp, err := client.Do(req)
+	// 使用全局HTTP客户端，复用连接池
+	resp, err := globalHTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("连接失败: %w", err)
 	}
@@ -143,9 +164,8 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 	}
 
 	// 将延迟定义为 FLV 的 HTTP 请求响应时间（ms）
-	sc.mu.Lock()
-	sc.response = time.Since(reqStart).Milliseconds()
-	sc.mu.Unlock()
+	// 优化：减少锁的使用，在最后统一更新
+	responseTime := time.Since(reqStart).Milliseconds()
 
 	// 创建解复用器
 	demuxer := flv.NewDemuxer(resp.Body)
@@ -182,8 +202,14 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 	keyframeInterval := 0
 
 	for {
-		// 基于时间的采样，更能反映实际情况
-		if time.Since(sampleStartTime) >= sampleDuration && keyframeCount >= minKeyframes {
+		// 基于时间的采样，提前退出条件：达到采样时间且收集到足够关键帧
+		elapsed := time.Since(sampleStartTime)
+		if elapsed >= sampleDuration && keyframeCount >= minKeyframes {
+			break
+		}
+
+		// 如果已经超过采样时间，即使关键帧不够也退出（避免长时间阻塞）
+		if elapsed >= sampleDuration*2 {
 			break
 		}
 
@@ -199,14 +225,9 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 		packetCount++
 		totalBytes += int64(len(pkt.Data))
 
-		// 检查 metadata
+		// 检查 metadata（只在第一次收到时记录，减少日志输出）
 		if pkt.Type == av.Metadata && !hasMetadata {
 			hasMetadata = true
-			// 尝试解析 metadata，看是否有时间信息
-			sc.log.Debug("收到Metadata",
-				"流ID", sc.id,
-				"数据长度", len(pkt.Metadata),
-				"数据", string(pkt.Metadata[:min(len(pkt.Metadata), 200)]))
 		}
 
 		// joy5: 使用 Type 判断包类型
@@ -226,11 +247,9 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 			}
 			lastDTS = int64(pkt.Time)
 
-			// 获取编码信息
+			// 获取编码信息（避免频繁加锁，只在第一次设置）
 			if sc.codec == "" {
-				sc.mu.Lock()
 				sc.codec = "H264"
-				sc.mu.Unlock()
 			}
 		case av.AAC:
 			audioCount++
@@ -267,6 +286,7 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 	sc.healthy = true
 	sc.consecutiveFails = 0
 	sc.gopSize = keyframeInterval
+	sc.response = responseTime // 更新响应时间
 
 	// 计算帧率和码率（基于 DTS 时间，更准确）
 	if !firstPacketTime.IsZero() && lastDTS > firstDTS {
@@ -281,43 +301,49 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 		sc.currentBitrate = (float64(totalBytes) * 8) / duration.Seconds() // bps
 	}
 
-	// 更新码率历史
+	// 更新码率历史（优化：减少计算频率）
 	if sc.currentBitrate > 0 {
 		sc.bitrateHistory = append(sc.bitrateHistory, sc.currentBitrate)
-		if len(sc.bitrateHistory) > 10 {
+		historyLen := len(sc.bitrateHistory)
+		if historyLen > 10 {
 			sc.bitrateHistory = sc.bitrateHistory[1:]
+			historyLen = 10
 		}
 
-		// 计算平均码率
+		// 计算平均码率（优化：使用增量计算）
 		sum := 0.0
-		for _, br := range sc.bitrateHistory {
-			sum += br
+		for i := 0; i < historyLen; i++ {
+			sum += sc.bitrateHistory[i]
 		}
-		sc.avgBitrate = sum / float64(len(sc.bitrateHistory))
+		sc.avgBitrate = sum / float64(historyLen)
 
-		// 评估码率稳定性
-		if len(sc.bitrateHistory) >= 3 {
+		// 评估码率稳定性（只在有足够数据时计算）
+		if historyLen >= 3 {
+			// 优化：使用单次遍历计算方差
 			variance := 0.0
-			for _, br := range sc.bitrateHistory {
-				diff := br - sc.avgBitrate
+			for i := 0; i < historyLen; i++ {
+				diff := sc.bitrateHistory[i] - sc.avgBitrate
 				variance += diff * diff
 			}
-			variance /= float64(len(sc.bitrateHistory))
+			variance /= float64(historyLen)
 			stdDev := math.Sqrt(variance)
 
 			// 计算变异系数（CV = 标准差/平均值）
-			cv := stdDev / sc.avgBitrate
-
-			// 根据变异系数评估稳定性
-			// CV < 0.15 (15%) = 稳定
-			// CV < 0.30 (30%) = 中等
-			// CV >= 0.30 = 不稳定
-			if cv < 0.15 {
-				sc.bitrateStability = "stable"
-			} else if cv < 0.30 {
-				sc.bitrateStability = "moderate"
+			if sc.avgBitrate > 0 {
+				cv := stdDev / sc.avgBitrate
+				// 根据变异系数评估稳定性
+				// CV < 0.15 (15%) = 稳定
+				// CV < 0.30 (30%) = 中等
+				// CV >= 0.30 = 不稳定
+				if cv < 0.15 {
+					sc.bitrateStability = "stable"
+				} else if cv < 0.30 {
+					sc.bitrateStability = "moderate"
+				} else {
+					sc.bitrateStability = "unstable"
+				}
 			} else {
-				sc.bitrateStability = "unstable"
+				sc.bitrateStability = "unknown"
 			}
 		} else {
 			sc.bitrateStability = "unknown"

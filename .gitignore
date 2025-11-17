@@ -34,3 +34,5 @@ logs/
 .DS_Store
 Thumbs.db
 config.yml
+
+.cursor
