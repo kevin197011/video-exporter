@@ -1780,7 +1780,7 @@
     "to": "now"
   },
   "timepicker": {},
-  "timezone": "",
+  "timezone": "Asia/Shanghai",
   "title": "🎬 视频流监控面板",
   "uid": "video-stream-monitoring",
   "version": 3
