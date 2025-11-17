@@ -797,7 +797,7 @@
               }
             ]
           },
-          "unit": "bps"
+          "unit": "kbps"
         },
         "overrides": [
           {
@@ -868,7 +868,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_bitrate_bps{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_bitrate_bps{project=~\"$project\", name=~\"$name\"} / 1000",
           "legendFormat": "{{name}} 实时",
           "range": true,
           "refId": "A"
@@ -879,7 +879,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_avg_bitrate_bps{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_avg_bitrate_bps{project=~\"$project\", name=~\"$name\"} / 1000",
           "legendFormat": "{{name}} 平均",
           "range": true,
           "refId": "B"
@@ -1184,6 +1184,7 @@
             },
             "renameByName": {
               "Value": "状态",
+              "id": "流ID",
               "name": "流名称",
               "project": "项目",
               "url": "流地址"
@@ -1719,8 +1720,12 @@
     "list": [
       {
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "text": [
+            "g01"
+          ],
+          "value": [
+            "g01"
+          ]
         },
         "datasource": {
           "type": "prometheus",
