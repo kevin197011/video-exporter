@@ -80,11 +80,9 @@ func extractStreamName(project, id, rawURL string) string {
 	pathSegment := "unknown"
 
 	if parsed, err := urlpkg.Parse(rawURL); err == nil {
-		// host 取第一个子域（例如：example.com -> example）
+		// host 取完整域名（例如：video.xxxx.com -> video.xxxx.com）
 		if host := parsed.Hostname(); host != "" {
-			if parts := strings.Split(host, "."); len(parts) > 0 && parts[0] != "" {
-				hostSegment = parts[0]
-			}
+			hostSegment = host
 		}
 
 		// path: 去掉扩展名，替换斜杠
@@ -103,9 +101,7 @@ func extractStreamName(project, id, rawURL string) string {
 		if matches := urlRegex.FindStringSubmatch(rawURL); len(matches) >= 3 {
 			host := matches[1]
 			if host != "" {
-				if parts := strings.Split(host, "."); len(parts) > 0 && parts[0] != "" {
-					hostSegment = parts[0]
-				}
+				hostSegment = host
 			}
 
 			p := matches[2]
