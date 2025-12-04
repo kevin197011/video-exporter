@@ -78,8 +78,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
+          "exemplar": false,
           "expr": "count(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -142,8 +144,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
+          "exemplar": false,
           "expr": "sum(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -207,8 +211,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
+          "exemplar": false,
           "expr": "count(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"} == 0)",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -281,8 +287,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
+          "exemplar": false,
           "expr": "sum(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) / count(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) * 100",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -345,8 +353,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
+          "exemplar": false,
           "expr": "sum(video_stream_healthy{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -409,8 +419,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
+          "exemplar": false,
           "expr": "sum(video_stream_playable{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -1357,7 +1369,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 150
+                "value": 372
               }
             ]
           },
@@ -2068,7 +2080,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 73
+        "y": 77
       },
       "id": 18,
       "options": {
@@ -2177,7 +2189,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 73
+        "y": 77
       },
       "id": 19,
       "options": {
@@ -2283,7 +2295,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 81
+        "y": 85
       },
       "id": 20,
       "options": {
@@ -2389,7 +2401,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 81
+        "y": 85
       },
       "id": 21,
       "options": {
@@ -2440,9 +2452,7 @@
     "list": [
       {
         "current": {
-          "text": [
-            "All"
-          ],
+          "text": "All",
           "value": [
             "$__all"
           ]
@@ -2520,12 +2530,12 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "🎬 视频流监控面板",
   "uid": "video-stream-monitoring",
-  "version": 9
+  "version": 17
 }
