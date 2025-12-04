@@ -76,17 +76,16 @@ video-exporter/
 ├── stream.go                     # 核心流检查逻辑
 ├── config.yml                    # 配置文件
 ├── config.example.yaml           # 配置文件示例
-├── deployments/                  # 部署相关文件
-│   ├── docker/                   # Docker 部署
-│   │   ├── Dockerfile           # 多阶段构建镜像
-│   │   ├── docker-compose.yml   # 编排配置
-│   │   └── prometheus.yml       # Prometheus 配置
+├── deployments/                  # 部署配置
 │   └── grafana/                  # Grafana 配置
-│       └── grafana-provisioning/       # 自动配置
-│           ├── dashboards/             # 仪表板
+│       └── grafana-provisioning/ # 自动配置
+│           ├── dashboards/       # 仪表板
 │           │   └── video-stream-dashboard.json
-│           └── datasources/            # 数据源
+│           └── datasources/      # 数据源
 │               └── prometheus.yml
+├── docker-compose.yml            # Docker Compose 编排配置
+├── Dockerfile                    # Docker 镜像构建
+├── prometheus.yml                # Prometheus 配置
 ├── scripts/                      # 脚本工具
 │   ├── start.sh                 # 启动脚本
 │   ├── stop.sh                  # 停止脚本

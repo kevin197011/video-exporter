@@ -17,17 +17,17 @@ video-exporter/
 ├── config.example.yaml           # 配置示例（提交）
 │
 ├── deployments/                  # 部署配置
-│   ├── docker/                   # Docker 相关
-│   │   ├── Dockerfile           # Docker 镜像构建
-│   │   ├── docker-compose.yml   # Docker Compose 编排
-│   │   └── prometheus.yml       # Prometheus 配置
-│   └── grafana/                  # Grafana 相关
-│       └── grafana-provisioning/          # 自动配置
-│           ├── datasources/               # 数据源配置
+│   └── grafana/                  # Grafana 配置
+│       └── grafana-provisioning/ # 自动配置
+│           ├── datasources/      # 数据源配置
 │           │   └── prometheus.yml
-│           └── dashboards/                # 仪表板配置
+│           └── dashboards/       # 仪表板配置
 │               ├── dashboard.yml
 │               └── video-stream-dashboard.json
+│
+├── docker-compose.yml            # Docker Compose 编排配置
+├── Dockerfile                    # Docker 镜像构建
+├── prometheus.yml                # Prometheus 配置
 │
 ├── scripts/                      # 脚本工具
 │   ├── start.sh                 # 启动脚本

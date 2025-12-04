@@ -8,11 +8,9 @@
 
 | 原位置 | 新位置 | 说明 |
 |--------|--------|------|
-| `./Dockerfile` | `deployments/docker/Dockerfile` | Docker 镜像构建文件 |
-| `./docker-compose.yml` | `deployments/docker/docker-compose.yml` | Docker Compose 编排文件 |
-| `./prometheus.yml` | `deployments/docker/prometheus.yml` | Prometheus 配置 |
 | `./grafana-dashboard.json` | `deployments/grafana/grafana-provisioning/dashboards/video-stream-dashboard.json` | Grafana 仪表板 |
-| `./grafana-provisioning/` | `deployments/grafana/grafana-provisioning/` | Grafana 自动配置 |
+
+**注意**：Docker 相关文件（`Dockerfile`, `docker-compose.yml`, `prometheus.yml`）保留在根目录，便于访问。
 | `./start.sh` | `scripts/start.sh` | 启动脚本 |
 | `./stop.sh` | `scripts/stop.sh` | 停止脚本 |
 | `./DOCKER-COMPOSE-README.md` | `docs/DOCKER-COMPOSE-README.md` | Docker Compose 文档 |
@@ -50,17 +48,17 @@ docker-compose logs -f
 # 启动（推荐使用脚本）
 ./scripts/start.sh
 # 或直接使用 docker-compose
-docker-compose -f deployments/docker/docker-compose.yml up -d
+docker-compose up -d
 
 # 停止
 ./scripts/stop.sh
 # 或
-docker-compose -f deployments/docker/docker-compose.yml stop
+docker-compose stop
 
 # 查看日志
 ./scripts/logs.sh
 # 或
-docker-compose -f deployments/docker/docker-compose.yml logs -f
+docker-compose logs -f
 ```
 
 ### Docker Build
@@ -72,9 +70,7 @@ docker build -t video-exporter .
 
 **现在的方式**：
 ```bash
-docker build -f deployments/docker/Dockerfile -t video-exporter .
-# 或在 deployments/docker 目录中
-cd deployments/docker && docker build -t video-exporter ../..
+docker build -t video-exporter .
 ```
 
 ### 文档查阅
@@ -109,8 +105,8 @@ tree -L 2 -I 'vendor|.git'
 # 停止旧的容器
 docker-compose down
 
-# 使用新路径启动
-docker-compose -f deployments/docker/docker-compose.yml up -d
+# 使用 docker-compose 启动
+docker-compose up -d
 
 # 或使用脚本（推荐）
 ./scripts/start.sh
@@ -122,20 +118,14 @@ docker-compose -f deployments/docker/docker-compose.yml up -d
 
 **Docker Build**：
 ```yaml
-# 原来
+# 都是一样的（文件在根目录）
 docker build -t video-exporter .
-
-# 现在
-docker build -f deployments/docker/Dockerfile -t video-exporter .
 ```
 
 **Docker Compose**：
 ```yaml
-# 原来
+# 都是一样的（文件在根目录）
 docker-compose up -d
-
-# 现在
-docker-compose -f deployments/docker/docker-compose.yml up -d
 ```
 
 ### 4. 更新脚本引用

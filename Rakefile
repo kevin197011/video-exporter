@@ -12,12 +12,8 @@ task :push do
   system 'git push origin main'
 end
 
-task :deploy do
+task :run do
   system 'docker compose down'
   system 'docker compose up -d --build'
   system 'docker compose logs -f'
-end
-
-task :run do
-  system 'go run .'
 end

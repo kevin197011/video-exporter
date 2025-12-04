@@ -28,8 +28,8 @@ if [ ! -f "config.yml" ]; then
     exit 1
 fi
 
-if [ ! -f "deployments/docker/prometheus.yml" ]; then
-    echo "错误: deployments/docker/prometheus.yml 不存在"
+if [ ! -f "prometheus.yml" ]; then
+    echo "错误: prometheus.yml 不存在"
     exit 1
 fi
 
@@ -38,7 +38,7 @@ echo ""
 
 # 启动服务
 echo "正在启动服务..."
-docker-compose -f deployments/docker/docker-compose.yml up -d
+docker-compose up -d
 
 echo ""
 echo "=========================================="
@@ -55,16 +55,16 @@ echo "Grafana 默认登录信息："
 echo "  - 用户名: admin"
 echo "  - 密码:   admin"
 echo ""
-echo "查看日志: ./scripts/logs.sh 或 docker-compose -f deployments/docker/docker-compose.yml logs -f"
+echo "查看日志: ./scripts/logs.sh 或 docker-compose logs -f"
 echo "停止服务: ./scripts/stop.sh"
-echo "删除服务: docker-compose -f deployments/docker/docker-compose.yml down"
+echo "删除服务: docker-compose down"
 echo ""
 echo "等待服务启动..."
 sleep 5
 
 echo ""
 echo "检查服务状态..."
-docker-compose -f deployments/docker/docker-compose.yml ps
+docker-compose ps
 
 echo ""
 echo "=========================================="
