@@ -711,6 +711,7 @@
           "calcs": [
             "lastNotNull",
             "max",
+            "min",
             "mean"
           ],
           "displayMode": "table",
@@ -848,6 +849,7 @@
           "calcs": [
             "lastNotNull",
             "max",
+            "min",
             "mean"
           ],
           "displayMode": "table",
@@ -880,6 +882,7 @@
           },
           "editorMode": "code",
           "expr": "video_stream_avg_bitrate_bps{project=~\"$project\", name=~\"$name\"} / 1000",
+          "hide": true,
           "legendFormat": "{{name}} 平均",
           "range": true,
           "refId": "B"
@@ -937,8 +940,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": null
+                "color": "red"
               },
               {
                 "color": "yellow",
@@ -1722,10 +1724,10 @@
       {
         "current": {
           "text": [
-            "g01"
+            "All"
           ],
           "value": [
-            "g01"
+            "$__all"
           ]
         },
         "datasource": {
@@ -1780,8 +1782,8 @@
     "to": "now"
   },
   "timepicker": {},
-  "timezone": "Asia/Shanghai",
+  "timezone": "",
   "title": "🎬 视频流监控面板",
   "uid": "video-stream-monitoring",
-  "version": 3
+  "version": 9
 }

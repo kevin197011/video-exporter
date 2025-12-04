@@ -4,13 +4,19 @@
 
 ## 功能特性
 
+### 核心功能
 - ✅ 实时流监控（多协程并发）
 - ✅ 深度质量分析（码率、帧率、分辨率、GOP等）
 - ✅ 健康评估系统（可播放性、质量等级）
+- ✅ 网络稳定性监控（RTT、丢包率、抖动、重连）
 - ✅ 延迟分析（流延迟计算）
 - ✅ 自动重连机制
 - ✅ 支持多种流格式（FLV、RTMP、HLS、RTSP等）
+
+### 监控与可视化
 - ✅ Prometheus 指标导出
+- ✅ Grafana 仪表板（自动配置）
+- ✅ Docker Compose 一键部署
 - ✅ 结构化日志输出
 
 ## 快速开始
@@ -47,11 +53,14 @@ streams:
 ### 3. 运行
 
 ```bash
-# 方式1: 直接运行
-go run *.go
+# 方式1: 使用 Makefile（推荐）
+make run
 
-# 方式2: 编译后运行
-go build -o video-exporter
+# 方式2: 直接运行
+go run ./cmd/video-exporter
+
+# 方式3: 编译后运行
+make build
 ./video-exporter
 ```
 
@@ -59,18 +68,36 @@ go build -o video-exporter
 
 ```
 video-exporter/
-├── main.go                 # 程序入口
-├── config.go               # 配置加载/结构体
-├── logger.go               # 日志系统
-├── exporter.go             # Prometheus 指标导出
-├── scheduler.go            # 调度与并发检查
-├── stream.go               # 核心流检查逻辑
-├── config.yml              # 配置文件（挂载到容器 /app/config.yml）
-├── Dockerfile              # 多阶段构建镜像
-├── docker-compose.yml      # 本地/服务器编排与配置挂载
-├── grafana-dashboard.json  # Grafana 仪表盘（按项目过滤）
-├── Makefile                # 常用命令
-├── run.sh                  # 运行脚本
+├── main.go                       # 程序入口
+├── config.go                     # 配置加载/结构体
+├── logger.go                     # 日志系统
+├── exporter.go                   # Prometheus 指标导出
+├── scheduler.go                  # 调度与并发检查
+├── stream.go                     # 核心流检查逻辑
+├── config.yml                    # 配置文件
+├── config.example.yaml           # 配置文件示例
+├── deployments/                  # 部署相关文件
+│   ├── docker/                   # Docker 部署
+│   │   ├── Dockerfile           # 多阶段构建镜像
+│   │   ├── docker-compose.yml   # 编排配置
+│   │   └── prometheus.yml       # Prometheus 配置
+│   └── grafana/                  # Grafana 配置
+│       └── grafana-provisioning/       # 自动配置
+│           ├── dashboards/             # 仪表板
+│           │   └── video-stream-dashboard.json
+│           └── datasources/            # 数据源
+│               └── prometheus.yml
+├── scripts/                      # 脚本工具
+│   ├── start.sh                 # 启动脚本
+│   ├── stop.sh                  # 停止脚本
+│   └── logs.sh                  # 日志查看脚本
+├── docs/                         # 文档
+│   ├── API.md                   # API 文档
+│   ├── DOCKER-COMPOSE-README.md # Docker Compose 使用说明
+│   └── DEPLOYMENT-CHECKLIST.md  # 部署检查清单
+├── CONTRIBUTING.md               # 贡献指南
+├── CHANGELOG.md                  # 更新日志
+├── Makefile                      # 常用命令
 ├── go.mod
 └── go.sum
 ```
@@ -101,20 +128,28 @@ video_stream_response_ms{project="project1",id="stream-01",url="https://..."} 15
 ### 基础指标
 - 总包数、视频包数、音频包数
 - 关键帧数量
-- 数据包接收时间
+- 流状态（在线/离线）
 
-### 深度指标
+### 质量指标
 - **码率**: 实时码率、平均码率、码率稳定性
 - **帧率**: 实时帧率计算
 - **分辨率**: 视频分辨率识别
 - **GOP**: 关键帧间隔分析
 - **编码**: 视频编码格式（H.264/H.265等）
 
+### 网络指标 🆕
+- **RTT**: 往返时间（毫秒）
+- **丢包率**: 0.0-1.0（0%-100%）
+- **网络抖动**: 包间隔标准差（毫秒）
+- **重连次数**: 累积重连统计
+
 ### 健康评估
 - 可播放性判断
 - 质量等级（good/fair/poor）
 - 响应时长（FLV HTTP 请求响应时间，单位：ms）
 - 异常检测
+
+> 💡 详细的 API 文档请查看 [docs/API.md](docs/API.md)
 
 ## 配置说明
 
@@ -145,27 +180,53 @@ video_stream_response_ms{project="project1",id="stream-01",url="https://..."} 15
 ## 编译
 
 ```bash
-# 本地编译
-go build -o video-exporter
+# 使用 Makefile（推荐）
+make build              # 本地编译
+make build-all          # 所有平台
 
-# Linux
-GOOS=linux GOARCH=amd64 go build -o video-exporter-linux
+# 手动编译
+go build -o video-exporter ./cmd/video-exporter
 
-# Windows
-GOOS=windows GOARCH=amd64 go build -o video-exporter.exe
-
-# macOS
-GOOS=darwin GOARCH=amd64 go build -o video-exporter-mac
+# 跨平台编译
+GOOS=linux GOARCH=amd64 go build -o video-exporter-linux ./cmd/video-exporter
+GOOS=windows GOARCH=amd64 go build -o video-exporter.exe ./cmd/video-exporter
+GOOS=darwin GOARCH=amd64 go build -o video-exporter-mac ./cmd/video-exporter
 ```
 
 ## 部署
 
+### Docker Compose（推荐）
+
+一键启动 Video Exporter + Prometheus + Grafana：
+
+```bash
+# 启动
+./scripts/start.sh
+
+# 查看日志
+./scripts/logs.sh
+
+# 停止
+./scripts/stop.sh
+```
+
+访问：
+- Video Exporter: http://localhost:8080
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000 (admin/admin)
+
+> 📖 详细部署文档：
+> - [Docker Compose 使用说明](docs/DOCKER-COMPOSE-README.md)
+> - [部署检查清单](docs/DEPLOYMENT-CHECKLIST.md)
+
 ### 后台运行
+
 ```bash
 nohup ./video-exporter > monitor.log 2>&1 &
 ```
 
 ### Systemd 服务
+
 ```ini
 [Unit]
 Description=Video Exporter
@@ -234,6 +295,23 @@ A: 访问 http://localhost:8080/metrics
 
 ### Q: 响应时间显示 N/A
 A: 需要成功完成 HTTP 连接才会产生响应时间
+
+## 文档
+
+- [API 文档](docs/API.md) - Prometheus 指标和 API 说明
+- [贡献指南](CONTRIBUTING.md) - 如何贡献代码
+- [更新日志](CHANGELOG.md) - 版本更新记录
+- [Docker Compose 使用](docs/DOCKER-COMPOSE-README.md) - 容器化部署
+- [部署检查清单](docs/DEPLOYMENT-CHECKLIST.md) - 部署前检查
+
+## 贡献
+
+欢迎贡献代码！请查看 [贡献指南](CONTRIBUTING.md)。
+
+提交代码前请确保：
+- 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范
+- 代码通过 `go fmt` 和 `go vet` 检查
+- 添加必要的测试和文档
 
 ## 许可证
 

@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-video-exporter
 video-exporter-*
 
 # Test binary
@@ -33,6 +32,13 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Configuration (含敏感信息，不提交)
 config.yml
 
+# IDE
 .cursor
+
+# Docker volumes (本地数据，不提交)
+# prometheus.yml 和 grafana-provisioning/ 需要提交
+# 但如果有本地修改的敏感配置，可以添加到下面

@@ -1,4 +1,4 @@
-package main
+package stream
 
 import (
 	"fmt"
@@ -15,6 +15,9 @@ import (
 
 	"github.com/nareix/joy5/av"
 	"github.com/nareix/joy5/format/flv"
+
+	"video-exporter/internal/config"
+	"video-exporter/internal/logger"
 )
 
 // 全局HTTP客户端，复用连接池
@@ -40,8 +43,8 @@ func initHTTPClient() {
 	})
 }
 
-// StreamChecker 流检查器
-type StreamChecker struct {
+// Checker 流检查器
+type Checker struct {
 	id      string
 	url     string
 	project string
@@ -68,6 +71,12 @@ type StreamChecker struct {
 	healthy          bool
 	lastCheckTime    time.Time
 	consecutiveFails int
+
+	// 网络稳定性指标
+	rtt             int64   // RTT 往返时间（毫秒）
+	packetLossRatio float64 // 丢包率（0.0-1.0）
+	networkJitter   int64   // 网络抖动（毫秒）
+	reconnectCount  int64   // 重连次数（累积值）
 
 	log *slog.Logger
 }
@@ -117,9 +126,9 @@ func extractStreamName(project, id, rawURL string) string {
 	return fmt.Sprintf("%s_%s_%s_%s", project, hostSegment, id, pathSegment)
 }
 
-// NewStreamChecker 创建流检查器
-func NewStreamChecker(id, url, project string) *StreamChecker {
-	return &StreamChecker{
+// NewChecker 创建流检查器
+func NewChecker(id, url, project string) *Checker {
+	return &Checker{
 		id:             id,
 		url:            url,
 		project:        project,
@@ -128,12 +137,17 @@ func NewStreamChecker(id, url, project string) *StreamChecker {
 		playable:       false,
 		quality:        "unknown",
 		bitrateHistory: make([]float64, 0, 10),
-		log:            GetLogger(),
+		log:            logger.Get(),
 	}
 }
 
+// ID 返回流ID
+func (sc *Checker) ID() string {
+	return sc.id
+}
+
 // Check 执行一次流检查
-func (sc *StreamChecker) Check(timeout time.Duration) error {
+func (sc *Checker) Check(timeout time.Duration) error {
 	sc.log.Debug("开始检查流", "流ID", sc.id, "URL", sc.url)
 
 	startTime := time.Now()
@@ -180,12 +194,12 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 	// 从配置读取采样参数，如果未配置则使用默认值
 	sampleDurationSec := 10
 	minKeyframes := 2
-	if globalConfig != nil {
-		if globalConfig.Exporter.SampleDuration > 0 {
-			sampleDurationSec = globalConfig.Exporter.SampleDuration
+	if cfg := config.GetGlobal(); cfg != nil {
+		if cfg.Exporter.SampleDuration > 0 {
+			sampleDurationSec = cfg.Exporter.SampleDuration
 		}
-		if globalConfig.Exporter.MinKeyframes > 0 {
-			minKeyframes = globalConfig.Exporter.MinKeyframes
+		if cfg.Exporter.MinKeyframes > 0 {
+			minKeyframes = cfg.Exporter.MinKeyframes
 		}
 	}
 	sampleDuration := time.Duration(sampleDurationSec) * time.Second
@@ -196,6 +210,13 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 	firstDTS := int64(0)           // 第一个视频包的DTS
 	lastDTS := int64(0)            // 最后一个视频包的DTS
 	keyframeInterval := 0
+
+	// 用于网络稳定性计算的变量
+	lastVideoTime := time.Time{}   // 上一个视频包到达时间
+	packetIntervals := []float64{} // 包间隔时间（用于计算抖动）
+	expectedPackets := int64(0)    // 期望的包数量
+	actualPackets := int64(0)      // 实际收到的包数量
+	lastVideoDTS := int64(0)       // 上一个视频包的DTS
 
 	for {
 		// 基于时间的采样，提前退出条件：达到采样时间且收集到足够关键帧
@@ -231,6 +252,7 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 		case av.H264:
 			videoCount++
 			hasVideo = true
+			actualPackets++
 
 			if pkt.IsKeyFrame {
 				keyframeCount++
@@ -240,6 +262,29 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 			if firstPacketTime.IsZero() {
 				firstPacketTime = pktRecvTime
 				firstDTS = int64(pkt.Time)
+				lastVideoTime = pktRecvTime
+				lastVideoDTS = int64(pkt.Time)
+			} else {
+				// 计算包间隔时间（用于抖动计算）
+				interval := pktRecvTime.Sub(lastVideoTime).Seconds() * 1000 // 转换为毫秒
+				if interval > 0 {
+					packetIntervals = append(packetIntervals, interval)
+				}
+				lastVideoTime = pktRecvTime
+
+				// 估算丢包（基于DTS时间戳）
+				currentDTS := int64(pkt.Time)
+				if lastVideoDTS > 0 && currentDTS > lastVideoDTS {
+					dtsDiff := currentDTS - lastVideoDTS
+					// 假设帧率为25fps，每帧时间约为40ms（40000000ns）
+					expectedFrames := dtsDiff / 40000000
+					if expectedFrames > 1 {
+						expectedPackets += expectedFrames
+					} else {
+						expectedPackets++
+					}
+				}
+				lastVideoDTS = currentDTS
 			}
 			lastDTS = int64(pkt.Time)
 
@@ -348,6 +393,50 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 
 	// 此处延迟已定义为 HTTP-FLV 请求响应时间（在完成HTTP响应后已设置）
 
+	// 计算网络稳定性指标
+	// RTT 使用 HTTP 响应时间作为近似值
+	sc.rtt = responseTime
+
+	// 计算丢包率
+	if expectedPackets > 0 {
+		lostPackets := expectedPackets - actualPackets
+		if lostPackets < 0 {
+			lostPackets = 0
+		}
+		sc.packetLossRatio = float64(lostPackets) / float64(expectedPackets)
+		// 确保在合理范围内
+		if sc.packetLossRatio > 1.0 {
+			sc.packetLossRatio = 1.0
+		}
+		if sc.packetLossRatio < 0 {
+			sc.packetLossRatio = 0
+		}
+	} else {
+		sc.packetLossRatio = 0
+	}
+
+	// 计算网络抖动（包间隔的标准差）
+	if len(packetIntervals) > 1 {
+		// 计算平均间隔
+		var sum float64
+		for _, interval := range packetIntervals {
+			sum += interval
+		}
+		avgInterval := sum / float64(len(packetIntervals))
+
+		// 计算标准差
+		var variance float64
+		for _, interval := range packetIntervals {
+			diff := interval - avgInterval
+			variance += diff * diff
+		}
+		variance /= float64(len(packetIntervals))
+		jitter := math.Sqrt(variance)
+		sc.networkJitter = int64(jitter)
+	} else {
+		sc.networkJitter = 0
+	}
+
 	// 评估质量
 	sc.playable = keyframeCount >= 2 && videoCount > 10
 	if sc.playable {
@@ -380,13 +469,17 @@ func (sc *StreamChecker) Check(timeout time.Duration) error {
 		"稳定性", sc.bitrateStability,
 		"帧率fps", fmt.Sprintf("%.1f", sc.framerate),
 		"GOP帧", sc.gopSize,
-		"编码", sc.codec)
+		"编码", sc.codec,
+		"RTT毫秒", sc.rtt,
+		"丢包率", fmt.Sprintf("%.2f%%", sc.packetLossRatio*100),
+		"网络抖动ms", sc.networkJitter,
+		"重连次数", sc.reconnectCount)
 
 	return nil
 }
 
 // MarkFailed 标记检查失败
-func (sc *StreamChecker) MarkFailed() {
+func (sc *Checker) MarkFailed() {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
@@ -408,14 +501,23 @@ func (sc *StreamChecker) MarkFailed() {
 	sc.quality = "poor"
 	sc.bitrateStability = "unstable"
 	sc.lastCheckTime = time.Now()
+
+	// 网络指标重置（注意：如果是连接失败，可能需要重连）
+	sc.rtt = 0
+	sc.packetLossRatio = 1.0 // 完全失败时丢包率为100%
+	sc.networkJitter = 0
+	// 如果连续失败且之前是健康的，计为一次重连
+	if sc.consecutiveFails == 1 {
+		sc.reconnectCount++
+	}
 }
 
 // GetMetrics 获取指标
-func (sc *StreamChecker) GetMetrics() StreamMetrics {
+func (sc *Checker) GetMetrics() Metrics {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
-	return StreamMetrics{
+	return Metrics{
 		ID:               sc.id,
 		URL:              sc.url,
 		Project:          sc.project,
@@ -438,11 +540,15 @@ func (sc *StreamChecker) GetMetrics() StreamMetrics {
 		Healthy:          sc.healthy,
 		LastCheckTime:    sc.lastCheckTime,
 		ConsecutiveFails: sc.consecutiveFails,
+		RTT:              sc.rtt,
+		PacketLossRatio:  sc.packetLossRatio,
+		NetworkJitter:    sc.networkJitter,
+		ReconnectCount:   sc.reconnectCount,
 	}
 }
 
-// StreamMetrics 流指标
-type StreamMetrics struct {
+// Metrics 流指标
+type Metrics struct {
 	ID               string
 	URL              string
 	Project          string
@@ -465,4 +571,9 @@ type StreamMetrics struct {
 	Healthy          bool
 	LastCheckTime    time.Time
 	ConsecutiveFails int
+	// 网络稳定性指标
+	RTT             int64   // RTT 往返时间（毫秒）
+	PacketLossRatio float64 // 丢包率（0.0-1.0）
+	NetworkJitter   int64   // 网络抖动（毫秒）
+	ReconnectCount  int64   // 重连次数
 }

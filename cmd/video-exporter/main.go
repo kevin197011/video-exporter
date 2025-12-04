@@ -4,37 +4,42 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"video-exporter/internal/config"
+	"video-exporter/internal/exporter"
+	"video-exporter/internal/logger"
+	"video-exporter/internal/scheduler"
 )
 
 func main() {
 	// 初始化日志
-	InitLogger()
-	log := GetLogger()
+	logger.Init()
+	log := logger.Get()
 
 	log.Info("启动 Video Stream Exporter")
 
 	// 加载配置
-	cfg, err := LoadConfig("config.yml")
+	cfg, err := config.Load("config.yml")
 	if err != nil {
 		log.Error("加载配置失败", "错误", err)
 		os.Exit(1)
 	}
 
 	// 设置日志级别
-	SetLogLevel(cfg.Exporter.LogLevel)
+	logger.SetLevel(cfg.Exporter.LogLevel)
 
 	// 设置全局配置
-	SetGlobalConfig(cfg)
+	config.SetGlobal(cfg)
 
 	// 创建调度器
-	scheduler := NewScheduler(cfg)
+	sched := scheduler.New(cfg)
 
 	// 添加所有流
 	totalStreams := 0
 	for project, streams := range cfg.Streams {
 		log.Info("加载项目", "项目", project, "流数量", len(streams))
 		for _, stream := range streams {
-			scheduler.AddStream(stream.ID, stream.URL, project)
+			sched.AddStream(stream.ID, stream.URL, project)
 			totalStreams++
 		}
 	}
@@ -42,10 +47,10 @@ func main() {
 	log.Info("已加载流", "总数", totalStreams)
 
 	// 启动调度器
-	go scheduler.Start()
+	go sched.Start()
 
 	// 创建并启动 Prometheus exporter
-	exporter := NewExporter(scheduler)
+	exp := exporter.New(sched)
 
 	listenAddr := cfg.Exporter.ListenAddr
 	if listenAddr == "" {
@@ -57,7 +62,7 @@ func main() {
 
 	// 启动 HTTP 服务器
 	go func() {
-		if err := exporter.StartHTTPServer(listenAddr); err != nil {
+		if err := exp.StartHTTPServer(listenAddr); err != nil {
 			log.Error("HTTP 服务器错误", "错误", err)
 		}
 	}()
@@ -72,7 +77,8 @@ func main() {
 	log.Info("收到停止信号")
 
 	// 停止调度器
-	scheduler.Stop()
+	sched.Stop()
 
 	log.Info("服务已停止")
 }
+

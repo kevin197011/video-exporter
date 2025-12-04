@@ -1,4 +1,4 @@
-package main
+package logger
 
 import (
 	"log/slog"
@@ -6,28 +6,28 @@ import (
 	"strings"
 )
 
-var logger *slog.Logger
+var instance *slog.Logger
 var levelVar slog.LevelVar
 
-// InitLogger 初始化日志
-func InitLogger() {
+// Init 初始化日志
+func Init() {
 	levelVar.Set(slog.LevelInfo)
 	// 只输出到标准输出，适合 Docker 环境
-	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	instance = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: &levelVar,
 	}))
 }
 
-// GetLogger 获取日志实例
-func GetLogger() *slog.Logger {
-	if logger == nil {
-		InitLogger()
+// Get 获取日志实例
+func Get() *slog.Logger {
+	if instance == nil {
+		Init()
 	}
-	return logger
+	return instance
 }
 
-// SetLogLevel 设置日志级别
-func SetLogLevel(level string) {
+// SetLevel 设置日志级别
+func SetLevel(level string) {
 	if level == "" {
 		level = "info"
 	}
@@ -45,7 +45,7 @@ func SetLogLevel(level string) {
 		levelVar.Set(slog.LevelInfo)
 	}
 
-	if logger != nil {
-		logger.Info("日志级别已更新", "level", levelVar.Level())
+	if instance != nil {
+		instance.Info("日志级别已更新", "level", levelVar.Level())
 	}
 }

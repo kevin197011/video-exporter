@@ -37,7 +37,7 @@ COPY . .
 
 # Build static binary (CGO disabled for portability)
 ENV CGO_ENABLED=0
-RUN go build -o /bin/video-exporter ./
+RUN go build -o /bin/video-exporter ./cmd/video-exporter
 
 # --- Runtime stage ---
 FROM alpine:3.20

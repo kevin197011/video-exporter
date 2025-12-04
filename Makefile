@@ -2,14 +2,15 @@
 
 # 项目名称
 BINARY_NAME=video-exporter
+CMD_PATH=./cmd/video-exporter
 
 # 构建
 build:
-	go build -o $(BINARY_NAME) *.go
+	go build -o $(BINARY_NAME) $(CMD_PATH)
 
 # 运行
 run:
-	go run *.go
+	go run $(CMD_PATH)
 
 # 清理
 clean:
@@ -29,13 +30,13 @@ install:
 build-all: build-linux build-windows build-mac
 
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -o $(BINARY_NAME)-linux main.go
+	GOOS=linux GOARCH=amd64 go build -o $(BINARY_NAME)-linux $(CMD_PATH)
 
 build-windows:
-	GOOS=windows GOARCH=amd64 go build -o $(BINARY_NAME).exe main.go
+	GOOS=windows GOARCH=amd64 go build -o $(BINARY_NAME).exe $(CMD_PATH)
 
 build-mac:
-	GOOS=darwin GOARCH=amd64 go build -o $(BINARY_NAME)-mac main.go
+	GOOS=darwin GOARCH=amd64 go build -o $(BINARY_NAME)-mac $(CMD_PATH)
 
 # 格式化代码
 fmt:

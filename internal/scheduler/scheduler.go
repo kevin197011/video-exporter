@@ -1,28 +1,32 @@
-package main
+package scheduler
 
 import (
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
+
+	"video-exporter/internal/config"
+	"video-exporter/internal/logger"
+	"video-exporter/internal/stream"
 )
 
 // Scheduler 调度器
 type Scheduler struct {
-	checkers map[string]*StreamChecker
-	config   *Config
+	checkers map[string]*stream.Checker
+	config   *config.Config
 	mu       sync.RWMutex
 	stopChan chan struct{}
 	log      *slog.Logger
 }
 
-// NewScheduler 创建调度器
-func NewScheduler(config *Config) *Scheduler {
+// New 创建调度器
+func New(cfg *config.Config) *Scheduler {
 	return &Scheduler{
-		checkers: make(map[string]*StreamChecker),
-		config:   config,
+		checkers: make(map[string]*stream.Checker),
+		config:   cfg,
 		stopChan: make(chan struct{}),
-		log:      GetLogger(),
+		log:      logger.Get(),
 	}
 }
 
@@ -32,7 +36,7 @@ func (s *Scheduler) AddStream(id, url, project string) {
 	defer s.mu.Unlock()
 
 	key := fmt.Sprintf("%s::%s", project, url)
-	checker := NewStreamChecker(id, url, project)
+	checker := stream.NewChecker(id, url, project)
 	s.checkers[key] = checker
 
 	s.log.Info("添加流", "流ID", id, "URL", url, "项目", project)
@@ -67,7 +71,7 @@ func (s *Scheduler) Start() {
 // runCheckCycle 执行一轮检查
 func (s *Scheduler) runCheckCycle() {
 	s.mu.RLock()
-	checkers := make([]*StreamChecker, 0, len(s.checkers))
+	checkers := make([]*stream.Checker, 0, len(s.checkers))
 	for _, checker := range s.checkers {
 		checkers = append(checkers, checker)
 	}
@@ -81,7 +85,7 @@ func (s *Scheduler) runCheckCycle() {
 
 	for _, checker := range checkers {
 		wg.Add(1)
-		go func(c *StreamChecker) {
+		go func(c *stream.Checker) {
 			defer wg.Done()
 
 			// 获取信号量
@@ -98,7 +102,7 @@ func (s *Scheduler) runCheckCycle() {
 }
 
 // checkWithRetry 带重试的检查
-func (s *Scheduler) checkWithRetry(checker *StreamChecker) {
+func (s *Scheduler) checkWithRetry(checker *stream.Checker) {
 	// 超时时间：采样时间(10秒) + 网络缓冲(5秒)
 	timeout := 15 * time.Second
 
@@ -112,7 +116,7 @@ func (s *Scheduler) checkWithRetry(checker *StreamChecker) {
 		if attempt > 0 {
 			// 重试前等待
 			retryDelay := time.Duration(attempt*2) * time.Second
-			s.log.Info("等待重试", "流ID", checker.id, "尝试次数", attempt, "延迟秒", retryDelay.Seconds())
+			s.log.Info("等待重试", "流ID", checker.ID(), "尝试次数", attempt, "延迟秒", retryDelay.Seconds())
 			time.Sleep(retryDelay)
 		}
 
@@ -123,12 +127,12 @@ func (s *Scheduler) checkWithRetry(checker *StreamChecker) {
 		}
 
 		lastErr = err
-		s.log.Error("检查失败", "流ID", checker.id, "尝试次数", attempt+1, "错误", err)
+		s.log.Error("检查失败", "流ID", checker.ID(), "尝试次数", attempt+1, "错误", err)
 	}
 
 	// 所有重试都失败
 	checker.MarkFailed()
-	s.log.Error("达到最大重试次数", "流ID", checker.id, "最后错误", lastErr)
+	s.log.Error("达到最大重试次数", "流ID", checker.ID(), "最后错误", lastErr)
 }
 
 // Stop 停止调度器
@@ -137,11 +141,11 @@ func (s *Scheduler) Stop() {
 }
 
 // GetAllMetrics 获取所有流的指标
-func (s *Scheduler) GetAllMetrics() []StreamMetrics {
+func (s *Scheduler) GetAllMetrics() []stream.Metrics {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	metrics := make([]StreamMetrics, 0, len(s.checkers))
+	metrics := make([]stream.Metrics, 0, len(s.checkers))
 	for _, checker := range s.checkers {
 		metrics = append(metrics, checker.GetMetrics())
 	}

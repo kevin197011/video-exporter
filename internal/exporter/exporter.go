@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"fmt"
@@ -7,6 +7,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"video-exporter/internal/logger"
+	"video-exporter/internal/scheduler"
 )
 
 // Exporter Prometheus 导出器
@@ -26,15 +29,25 @@ type Exporter struct {
 	qualityScore   *prometheus.GaugeVec
 	stabilityScore *prometheus.GaugeVec
 
-	scheduler *Scheduler
+	// 网络稳定性指标
+	rtt             *prometheus.GaugeVec
+	packetLossRatio *prometheus.GaugeVec
+	networkJitter   *prometheus.GaugeVec
+	reconnectTotal  *prometheus.CounterVec
+
+	// 用于跟踪上次的重连次数（用于计算Counter增量）
+	lastReconnectCount map[string]int64
+
+	scheduler *scheduler.Scheduler
 	log       *slog.Logger
 }
 
-// NewExporter 创建导出器
-func NewExporter(scheduler *Scheduler) *Exporter {
+// New 创建导出器
+func New(s *scheduler.Scheduler) *Exporter {
 	exporter := &Exporter{
-		scheduler: scheduler,
-		log:       GetLogger(),
+		scheduler:          s,
+		log:                logger.Get(),
+		lastReconnectCount: make(map[string]int64),
 
 		streamUp: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -148,6 +161,39 @@ func NewExporter(scheduler *Scheduler) *Exporter {
 			[]string{"project", "id", "name", "url"},
 		),
 
+		// 网络稳定性指标
+		rtt: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "video_stream_rtt_ms",
+				Help: "Round-trip time in milliseconds",
+			},
+			[]string{"project", "id", "name", "url"},
+		),
+
+		packetLossRatio: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "video_stream_packet_loss_ratio",
+				Help: "Packet loss ratio (0.0-1.0)",
+			},
+			[]string{"project", "id", "name", "url"},
+		),
+
+		networkJitter: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "video_stream_network_jitter_ms",
+				Help: "Network jitter in milliseconds",
+			},
+			[]string{"project", "id", "name", "url"},
+		),
+
+		reconnectTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "video_stream_reconnect_total",
+				Help: "Total number of reconnections",
+			},
+			[]string{"project", "id", "name", "url"},
+		),
+
 		// resolution: prometheus.NewGaugeVec(
 		// 	prometheus.GaugeOpts{
 		// 		Name: "video_stream_resolution_pixels",
@@ -173,14 +219,19 @@ func NewExporter(scheduler *Scheduler) *Exporter {
 		exporter.gopSize,
 		exporter.qualityScore,
 		exporter.stabilityScore,
+		// 网络稳定性指标
+		exporter.rtt,
+		exporter.packetLossRatio,
+		exporter.networkJitter,
+		exporter.reconnectTotal,
 		// exporter.resolution,
 	)
 
 	return exporter
 }
 
-// updateMetrics 更新指标
-func (e *Exporter) updateMetrics() {
+// UpdateMetrics 更新指标
+func (e *Exporter) UpdateMetrics() {
 	e.log.Debug("开始更新指标")
 	metrics := e.scheduler.GetAllMetrics()
 	e.log.Debug("获取到指标", "数量", len(metrics))
@@ -248,6 +299,25 @@ func (e *Exporter) updateMetrics() {
 		}
 		e.stabilityScore.WithLabelValues(labels...).Set(stabilityScore)
 
+		// 网络稳定性指标
+		e.rtt.WithLabelValues(labels...).Set(float64(m.RTT))
+		e.packetLossRatio.WithLabelValues(labels...).Set(m.PacketLossRatio)
+		e.networkJitter.WithLabelValues(labels...).Set(float64(m.NetworkJitter))
+
+		// 重连次数（Counter类型，只增加增量）
+		streamKey := fmt.Sprintf("%s_%s", m.Project, m.ID)
+		lastCount, exists := e.lastReconnectCount[streamKey]
+		if exists && m.ReconnectCount > lastCount {
+			// 增加增量
+			delta := float64(m.ReconnectCount - lastCount)
+			e.reconnectTotal.WithLabelValues(labels...).Add(delta)
+		} else if !exists && m.ReconnectCount > 0 {
+			// 第一次记录，直接添加当前值
+			e.reconnectTotal.WithLabelValues(labels...).Add(float64(m.ReconnectCount))
+		}
+		// 更新上次的值
+		e.lastReconnectCount[streamKey] = m.ReconnectCount
+
 		// 分辨率 - 暂时注释掉
 		// if m.Width > 0 && m.Height > 0 {
 		// 	resLabels := append(labels, fmt.Sprintf("%d", m.Width), fmt.Sprintf("%d", m.Height))
@@ -266,7 +336,7 @@ func (e *Exporter) StartHTTPServer(addr string) error {
 	// Prometheus metrics endpoint - 每次请求时更新指标
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		e.log.Debug("收到 metrics 请求")
-		e.updateMetrics()
+		e.UpdateMetrics()
 		e.log.Debug("指标更新完成")
 		promhttp.Handler().ServeHTTP(w, r)
 	})
