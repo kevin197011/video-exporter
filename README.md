@@ -298,10 +298,14 @@ A: 需要成功完成 HTTP 连接才会产生响应时间
 ## 文档
 
 - [API 文档](docs/API.md) - Prometheus 指标和 API 说明
+- [网络指标说明](docs/NETWORK-METRICS.md) - 网络稳定性监控详解 🆕
+- [Go 代码结构](docs/GO-CODE-STRUCTURE.md) - Go 代码组织说明
+- [项目结构](docs/PROJECT-STRUCTURE.md) - 完整项目结构
 - [贡献指南](CONTRIBUTING.md) - 如何贡献代码
 - [更新日志](CHANGELOG.md) - 版本更新记录
 - [Docker Compose 使用](docs/DOCKER-COMPOSE-README.md) - 容器化部署
 - [部署检查清单](docs/DEPLOYMENT-CHECKLIST.md) - 部署前检查
+- [迁移指南](docs/MIGRATION-GUIDE.md) - 版本迁移说明
 
 ## 贡献
 
