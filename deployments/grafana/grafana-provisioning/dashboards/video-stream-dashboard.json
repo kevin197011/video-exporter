@@ -78,7 +78,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(video_stream_up{project=~\"$project\", name=~\"$name\"})",
+          "expr": "count(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
           "range": true,
           "refId": "A"
         }
@@ -142,7 +142,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(video_stream_up{project=~\"$project\", name=~\"$name\"})",
+          "expr": "sum(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
           "range": true,
           "refId": "A"
         }
@@ -207,7 +207,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(video_stream_up{project=~\"$project\", name=~\"$name\"} == 0)",
+          "expr": "count(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"} == 0)",
           "range": true,
           "refId": "A"
         }
@@ -281,7 +281,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(video_stream_up{project=~\"$project\", name=~\"$name\"}) / count(video_stream_up{project=~\"$project\", name=~\"$name\"}) * 100",
+          "expr": "sum(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) / count(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) * 100",
           "range": true,
           "refId": "A"
         }
@@ -345,7 +345,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(video_stream_healthy{project=~\"$project\", name=~\"$name\"})",
+          "expr": "sum(video_stream_healthy{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
           "range": true,
           "refId": "A"
         }
@@ -409,7 +409,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(video_stream_playable{project=~\"$project\", name=~\"$name\"})",
+          "expr": "sum(video_stream_playable{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
           "range": true,
           "refId": "A"
         }
@@ -481,7 +481,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avg(video_stream_rtt_ms{project=~\"$project\", name=~\"$name\"})",
+          "expr": "avg(video_stream_rtt_ms{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
           "range": true,
           "refId": "A"
         }
@@ -555,7 +555,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avg(video_stream_packet_loss_ratio{project=~\"$project\", name=~\"$name\"})",
+          "expr": "avg(video_stream_packet_loss_ratio{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
           "range": true,
           "refId": "A"
         }
@@ -627,7 +627,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avg(video_stream_network_jitter_ms{project=~\"$project\", name=~\"$name\"})",
+          "expr": "avg(video_stream_network_jitter_ms{project=~\"$project\", id=~\"$id\", name=~\"$name\"})",
           "range": true,
           "refId": "A"
         }
@@ -699,7 +699,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(video_stream_reconnect_total{project=~\"$project\", name=~\"$name\"})",
+          "expr": "sum(video_stream_reconnect_total{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) or vector(0)",
           "range": true,
           "refId": "A"
         }
@@ -796,7 +796,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(video_stream_up{project=~\"$project\", name=~\"$name\"}) by (project)",
+          "expr": "sum(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) by (project)",
           "legendFormat": "{{project}} 在线流数",
           "range": true,
           "refId": "A"
@@ -807,7 +807,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(video_stream_up{project=~\"$project\", name=~\"$name\"} == 0) by (project)",
+          "expr": "count(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"} == 0) by (project)",
           "legendFormat": "{{project}} 离线流数",
           "range": true,
           "refId": "B"
@@ -915,7 +915,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(video_stream_up{project=~\"$project\", name=~\"$name\"}) by (project) / count(video_stream_up{project=~\"$project\", name=~\"$name\"}) by (project) * 100",
+          "expr": "sum(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) by (project) / count(video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) by (project) * 100",
           "legendFormat": "{{project}} 成功率",
           "range": true,
           "refId": "A"
@@ -1022,7 +1022,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_response_ms{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_response_ms{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -1160,7 +1160,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_bitrate_bps{project=~\"$project\", name=~\"$name\"} / 1000",
+          "expr": "video_stream_bitrate_bps{project=~\"$project\", id=~\"$id\", name=~\"$name\"} / 1000",
           "legendFormat": "{{name}} 实时",
           "range": true,
           "refId": "A"
@@ -1171,7 +1171,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_avg_bitrate_bps{project=~\"$project\", name=~\"$name\"} / 1000",
+          "expr": "video_stream_avg_bitrate_bps{project=~\"$project\", id=~\"$id\", name=~\"$name\"} / 1000",
           "hide": true,
           "legendFormat": "{{name}} 平均",
           "range": true,
@@ -1279,7 +1279,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_framerate{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_framerate{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -1447,7 +1447,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_up{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_up{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -1576,7 +1576,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_total_packets{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_total_packets{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "total {{name}}",
           "range": true,
           "refId": "A"
@@ -1587,7 +1587,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_video_packets{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_video_packets{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "video {{name}}",
           "range": true,
           "refId": "B"
@@ -1598,7 +1598,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_audio_packets{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_audio_packets{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "audio {{name}}",
           "range": true,
           "refId": "C"
@@ -1696,7 +1696,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_keyframes{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_keyframes{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -1794,7 +1794,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_gop_size{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_gop_size{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -1892,7 +1892,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_quality_score{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_quality_score{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -1990,7 +1990,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_stability_score{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_stability_score{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -2097,7 +2097,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_rtt_ms{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_rtt_ms{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -2205,7 +2205,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_packet_loss_ratio{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_packet_loss_ratio{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -2311,7 +2311,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_network_jitter_ms{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_network_jitter_ms{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -2417,7 +2417,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_reconnect_total{project=~\"$project\", name=~\"$name\"}",
+          "expr": "video_stream_reconnect_total{project=~\"$project\", id=~\"$id\", name=~\"$name\"} or vector(0)",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -2476,7 +2476,32 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(video_stream_up{project=~\"$project\"},name)",
+        "definition": "label_values(video_stream_up{project=~\"$project\"},id)",
+        "includeAll": true,
+        "label": "桌台ID",
+        "multi": true,
+        "name": "id",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(video_stream_up{project=~\"$project\"},id)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(video_stream_up{project=~\"$project\",id=~\"$id\"},name)",
         "includeAll": true,
         "label": "流名称",
         "multi": true,
@@ -2484,7 +2509,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(video_stream_up{project=~\"$project\"},name)",
+          "query": "label_values(video_stream_up{project=~\"$project\",id=~\"$id\"},name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
