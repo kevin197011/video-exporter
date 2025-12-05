@@ -2429,7 +2429,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_reconnect_count{project=~\"$project\", id=~\"$id\", name=~\"$name\"} or vector(0)",
+          "expr": "video_stream_reconnect_count{project=~\"$project\", id=~\"$id\", name=~\"$name\"}",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
@@ -2530,12 +2530,12 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "🎬 视频流监控面板",
   "uid": "video-stream-monitoring",
-  "version": 17
+  "version": 21
 }
