@@ -319,6 +319,13 @@ func (sc *Checker) Check(timeout time.Duration) error {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
+	// 如果之前是失败状态，现在恢复了，计为一次重连
+	wasUnhealthy := !sc.healthy || sc.consecutiveFails > 0
+	if wasUnhealthy {
+		sc.reconnectCount++
+		sc.log.Info("流恢复", "流ID", sc.id, "重连次数", sc.reconnectCount)
+	}
+
 	sc.totalPackets = int64(packetCount)
 	sc.videoPackets = int64(videoCount)
 	sc.audioPackets = int64(audioCount)
@@ -502,14 +509,11 @@ func (sc *Checker) MarkFailed() {
 	sc.bitrateStability = "unstable"
 	sc.lastCheckTime = time.Now()
 
-	// 网络指标重置（注意：如果是连接失败，可能需要重连）
+	// 网络指标重置
 	sc.rtt = 0
 	sc.packetLossRatio = 1.0 // 完全失败时丢包率为100%
 	sc.networkJitter = 0
-	// 如果连续失败且之前是健康的，计为一次重连
-	if sc.consecutiveFails == 1 {
-		sc.reconnectCount++
-	}
+	// 注意：重连次数在恢复成功时累加，而不是在失败时
 }
 
 // GetMetrics 获取指标

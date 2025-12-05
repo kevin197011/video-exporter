@@ -38,7 +38,7 @@ config.yml
 
 # IDE
 .cursor
-
+.kiro
 # Docker volumes (本地数据，不提交)
 # prometheus.yml 和 grafana-provisioning/ 需要提交
 # 但如果有本地修改的敏感配置，可以添加到下面
