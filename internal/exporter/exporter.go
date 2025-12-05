@@ -33,10 +33,7 @@ type Exporter struct {
 	rtt             *prometheus.GaugeVec
 	packetLossRatio *prometheus.GaugeVec
 	networkJitter   *prometheus.GaugeVec
-	reconnectTotal  *prometheus.CounterVec
-
-	// 用于跟踪上次的重连次数（用于计算Counter增量）
-	lastReconnectCount map[string]int64
+	reconnectCount  *prometheus.GaugeVec // 改为 Gauge，记录本周期内的重连次数
 
 	scheduler *scheduler.Scheduler
 	log       *slog.Logger
@@ -45,9 +42,8 @@ type Exporter struct {
 // New 创建导出器
 func New(s *scheduler.Scheduler) *Exporter {
 	exporter := &Exporter{
-		scheduler:          s,
-		log:                logger.Get(),
-		lastReconnectCount: make(map[string]int64),
+		scheduler: s,
+		log:       logger.Get(),
 
 		streamUp: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -186,10 +182,10 @@ func New(s *scheduler.Scheduler) *Exporter {
 			[]string{"project", "id", "name", "url"},
 		),
 
-		reconnectTotal: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "video_stream_reconnect_total",
-				Help: "Total number of reconnections",
+		reconnectCount: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "video_stream_reconnect_count",
+				Help: "Number of reconnections in current check cycle",
 			},
 			[]string{"project", "id", "name", "url"},
 		),
@@ -223,7 +219,7 @@ func New(s *scheduler.Scheduler) *Exporter {
 		exporter.rtt,
 		exporter.packetLossRatio,
 		exporter.networkJitter,
-		exporter.reconnectTotal,
+		exporter.reconnectCount,
 		// exporter.resolution,
 	)
 
@@ -304,19 +300,8 @@ func (e *Exporter) UpdateMetrics() {
 		e.packetLossRatio.WithLabelValues(labels...).Set(m.PacketLossRatio)
 		e.networkJitter.WithLabelValues(labels...).Set(float64(m.NetworkJitter))
 
-		// 重连次数（Counter类型，只增加增量）
-		streamKey := fmt.Sprintf("%s_%s", m.Project, m.ID)
-		lastCount, exists := e.lastReconnectCount[streamKey]
-		if exists && m.ReconnectCount > lastCount {
-			// 增加增量
-			delta := float64(m.ReconnectCount - lastCount)
-			e.reconnectTotal.WithLabelValues(labels...).Add(delta)
-		} else if !exists && m.ReconnectCount > 0 {
-			// 第一次记录，直接添加当前值
-			e.reconnectTotal.WithLabelValues(labels...).Add(float64(m.ReconnectCount))
-		}
-		// 更新上次的值
-		e.lastReconnectCount[streamKey] = m.ReconnectCount
+		// 重连次数（Gauge类型，直接设置本周期内的重连次数）
+		e.reconnectCount.WithLabelValues(labels...).Set(float64(m.ReconnectCount))
 
 		// 分辨率 - 暂时注释掉
 		// if m.Width > 0 && m.Height > 0 {

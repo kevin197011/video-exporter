@@ -711,7 +711,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(video_stream_reconnect_total{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) or vector(0)",
+          "expr": "sum(video_stream_reconnect_count{project=~\"$project\", id=~\"$id\", name=~\"$name\"}) or vector(0)",
           "range": true,
           "refId": "A"
         }
@@ -2429,7 +2429,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "video_stream_reconnect_total{project=~\"$project\", id=~\"$id\", name=~\"$name\"} or vector(0)",
+          "expr": "video_stream_reconnect_count{project=~\"$project\", id=~\"$id\", name=~\"$name\"} or vector(0)",
           "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"

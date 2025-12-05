@@ -79,6 +79,11 @@ func (s *Scheduler) runCheckCycle() {
 
 	s.log.Info("开始检查周期", "流数量", len(checkers))
 
+	// 重置所有流的周期指标（重连次数等）
+	for _, checker := range checkers {
+		checker.ResetCycleMetrics()
+	}
+
 	// 使用信号量控制并发
 	semaphore := make(chan struct{}, s.config.Exporter.MaxConcurrent)
 	var wg sync.WaitGroup

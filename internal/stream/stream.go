@@ -76,7 +76,7 @@ type Checker struct {
 	rtt             int64   // RTT 往返时间（毫秒）
 	packetLossRatio float64 // 丢包率（0.0-1.0）
 	networkJitter   int64   // 网络抖动（毫秒）
-	reconnectCount  int64   // 重连次数（累积值）
+	reconnectCount  int64   // 重连次数（本检查周期内的重连次数，每个周期重置）
 
 	log *slog.Logger
 }
@@ -514,6 +514,16 @@ func (sc *Checker) MarkFailed() {
 	sc.packetLossRatio = 1.0 // 完全失败时丢包率为100%
 	sc.networkJitter = 0
 	// 注意：重连次数在恢复成功时累加，而不是在失败时
+}
+
+// ResetCycleMetrics 重置检查周期相关的指标
+// 在每个检查周期开始时调用，重置周期内的统计数据
+func (sc *Checker) ResetCycleMetrics() {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	// 重置重连次数（每个周期独立统计）
+	sc.reconnectCount = 0
 }
 
 // GetMetrics 获取指标
