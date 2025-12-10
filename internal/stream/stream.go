@@ -205,6 +205,13 @@ func (sc *Checker) Check(timeout time.Duration) error {
 	sampleDuration := time.Duration(sampleDurationSec) * time.Second
 	sampleStartTime := time.Now()
 
+	// 自动计算最大采样字节数限制
+	// 基于采样时长和常见码率范围（1-10Mbps）自动估算，留出2倍安全余量
+	// 公式: maxBytes = (maxBitrate * sampleDuration) / 8 * 2
+	// 假设最大码率为 10Mbps，转换为字节: 10Mbps * sampleDuration / 8 * 2 (安全系数)
+	maxBitrateBps := int64(10 * 1000 * 1000)                             // 10Mbps = 10,000,000 bps
+	maxSampleBytes := (maxBitrateBps * int64(sampleDurationSec)) / 8 * 2 // 2倍安全余量
+
 	// 用于延迟计算的变量
 	firstPacketTime := time.Time{} // 第一个视频包到达的系统时间（用于是否读到包的判定）
 	firstDTS := int64(0)           // 第一个视频包的DTS
@@ -230,6 +237,12 @@ func (sc *Checker) Check(timeout time.Duration) error {
 			break
 		}
 
+		// 字节数限制：如果设置了最大采样字节数，达到限制后立即退出
+		if maxSampleBytes > 0 && totalBytes >= maxSampleBytes {
+			sc.log.Debug("达到最大采样字节数限制", "流ID", sc.id, "已采样字节", totalBytes, "限制", maxSampleBytes)
+			break
+		}
+
 		pktRecvTime := time.Now() // 记录包到达时间
 		pkt, err := demuxer.ReadPacket()
 		if err != nil {
@@ -241,6 +254,12 @@ func (sc *Checker) Check(timeout time.Duration) error {
 
 		packetCount++
 		totalBytes += int64(len(pkt.Data))
+
+		// 字节数限制检查（在累加后立即检查，避免超过限制）
+		if maxSampleBytes > 0 && totalBytes >= maxSampleBytes {
+			sc.log.Debug("达到最大采样字节数限制", "流ID", sc.id, "已采样字节", totalBytes, "限制", maxSampleBytes)
+			break
+		}
 
 		// 检查 metadata（只在第一次收到时记录，减少日志输出）
 		if pkt.Type == av.Metadata && !hasMetadata {
